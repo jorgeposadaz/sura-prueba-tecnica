@@ -5,10 +5,12 @@
 **Empresa:** Sura
 
 Este repositorio contiene la entrega de la prueba técnica: Las Secciones
-Sección 3 (Python: automatización y validación de calidad del dato) y
-Sección 4 (Tablero ligero en HTML u otra herramienta sin licencia)
+3 (Python: automatización y validación de calidad del dato) y
+4 (Tablero ligero en HTML u otra herramienta sin licencia)
 como código ejecutable, y las Secciones 1, 2, 5 y 6 como documento
 adjunto con las respuestas escritas.
+Adicionalmente la carpeta seccion_2 contiene las consultas SQL solicitadas
+en las preguntas 2.2 y 2.3.
 
 ## Estructura del repositorio
 
