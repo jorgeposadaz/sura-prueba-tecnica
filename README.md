@@ -1,7 +1,7 @@
 # Prueba Técnica — Analista de Datos y Analítica
 
-**Candidato:** Jorge Mario Zapata Posada
-**Cargo:** Analista de Datos y Analítica
+**Candidato:** Jorge Mario Zapata Posada  
+**Cargo:** Analista de Datos y Analítica  
 **Empresa:** Sura
 
 Este repositorio contiene la entrega de la prueba técnica: Las Secciones
