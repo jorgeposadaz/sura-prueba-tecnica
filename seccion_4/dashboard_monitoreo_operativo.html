@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tablero de Monitoreo Operativo</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --color-bg: #F7F8FA;
+    --color-surface: #FFFFFF;
+    --color-border: #E3E6ED;
+    --color-ink: #16213E;
+    --color-ink-muted: #5C6B8A;
+    --color-accent: #0F6B5C;
+    --color-accent-soft: #E3F1EC;
+    --color-bad: #C14A4A;
+    --color-bad-soft: #F6E8E8;
+    --color-good: #2F8F6E;
+    --color-good-soft: #E6F2ED;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 28px 24px 56px;
+  }
+
+  /* ---- Encabezado ---- */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  header h1 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  header p {
+    margin: 0;
+    color: var(--color-ink-muted);
+    font-size: 13.5px;
+  }
+  .corte {
+    text-align: right;
+    font-size: 13px;
+    color: var(--color-ink-muted);
+  }
+  .corte strong { color: var(--color-ink); }
+
+  /* ---- Filtro ---- */
+  .filtro-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .filtro-label {
+    font-size: 13px;
+    color: var(--color-ink-muted);
+    margin-right: 2px;
+  }
+  .pill {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-ink-muted);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .pill:hover { border-color: var(--color-accent); }
+  .pill.activo {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #fff;
+  }
+  .filtro-reset {
+    border: none;
+    background: none;
+    color: var(--color-ink-muted);
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 6px 4px;
+  }
+
+  /* ---- KPIs ---- */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .kpi-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .kpi-label {
+    font-size: 13px;
+    color: var(--color-ink-muted);
+    margin-bottom: 8px;
+  }
+  .kpi-value {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .kpi-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+  .kpi-delta.subio-mal { background: var(--color-bad-soft); color: var(--color-bad); }
+  .kpi-delta.bajo-bien { background: var(--color-good-soft); color: var(--color-good); }
+  .kpi-delta.neutro { background: #EEF0F4; color: var(--color-ink-muted); }
+  .kpi-ref { color: var(--color-ink-muted); font-weight: 400; }
+
+  /* ---- Secciones ---- */
+  .panel {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 18px 20px 20px;
+    margin-bottom: 14px;
+  }
+  .panel h2 {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 2px;
+  }
+  .panel .subtitulo {
+    font-size: 12.5px;
+    color: var(--color-ink-muted);
+    margin: 0 0 14px;
+  }
+
+  .fila-dos-col {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 14px;
+  }
+
+  /* ---- Tabla ---- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  thead th {
+    text-align: left;
+    font-size: 12px;
+    text-transform: none;
+    color: var(--color-ink-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--color-border);
+    padding: 7px 8px;
+  }
+  tbody td {
+    padding: 8px 8px;
+    border-bottom: 1px solid #F0F1F5;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .badge-clase {
+    display: inline-block;
+    min-width: 20px;
+    text-align: center;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .clase-1, .clase-2 { background: var(--color-good-soft); color: var(--color-good); }
+  .clase-3 { background: #FBF0DD; color: var(--color-warning, #9C6B10); }
+  .clase-4, .clase-5 { background: var(--color-bad-soft); color: var(--color-bad); }
+
+  .dist-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .chart-box { position: relative; height: 230px; }
+  .chart-box.alto { height: 280px; }
+
+  .vacio {
+    color: var(--color-ink-muted);
+    font-size: 13px;
+    padding: 24px 0;
+    text-align: center;
+  }
+
+  footer {
+    margin-top: 18px;
+    font-size: 12px;
+    color: var(--color-ink-muted);
+    text-align: center;
+  }
+
+  @media (max-width: 860px) {
+    .kpi-grid { grid-template-columns: 1fr; }
+    .fila-dos-col, .dist-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Tablero de Monitoreo Operativo</h1>
+      <p>Casos, costo e incidencia por cliente empresarial</p>
+    </div>
+    <div class="corte">Corte: <strong id="corte-label">—</strong></div>
+  </header>
+
+  <div class="filtro-bar">
+    <span class="filtro-label">Clase de riesgo:</span>
+    <div id="pills-clase"></div>
+    <button class="filtro-reset" id="btn-reset">Mostrar todas</button>
+  </div>
+
+  <section class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Total de casos del mes</div>
+      <div class="kpi-value" id="kpi-casos-valor">—</div>
+      <div class="kpi-delta" id="kpi-casos-delta"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Costo total del mes</div>
+      <div class="kpi-value" id="kpi-costo-valor">—</div>
+      <div class="kpi-delta" id="kpi-costo-delta"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Tasa de incidencia (x 100 trabajadores)</div>
+      <div class="kpi-value" id="kpi-tasa-valor">—</div>
+      <div class="kpi-delta" id="kpi-tasa-delta"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Tendencia mensual — últimos 12 meses</h2>
+    <p class="subtitulo">Total de casos por mes, con línea de referencia del promedio histórico del período</p>
+    <div class="chart-box alto"><canvas id="chart-tendencia"></canvas></div>
+  </section>
+
+  <div class="fila-dos-col">
+    <section class="panel">
+      <h2>Top 10 clientes con más casos</h2>
+      <p class="subtitulo">Acumulado de los últimos 12 meses, según el filtro activo</p>
+      <table>
+        <thead>
+          <tr><th>Cliente</th><th>Clase</th><th class="num">Casos</th><th class="num">Graves</th></tr>
+        </thead>
+        <tbody id="tabla-top-clientes"></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Distribución de casos</h2>
+      <p class="subtitulo">Por tipo y por clase de riesgo</p>
+      <div class="dist-row">
+        <div class="chart-box"><canvas id="chart-tipo"></canvas></div>
+        <div class="chart-box"><canvas id="chart-clase"></canvas></div>
+      </div>
+    </section>
+  </div>
+
+  <footer>Datos generados programáticamente al cargar la página — sin archivos externos.</footer>
+</div>
+
+<script>
+/* ==========================================================================
+   DATOS: generación sintética
+   -------------------------------------------------------------------------
+   Todo el dataset (clientes, casos, facturación) se genera en el navegador
+   al cargar la página, usando un generador pseudoaleatorio con semilla fija,
+   para que la sesión sea reproducible (los mismos números en cada carga).
+   ========================================================================== */
+
+const N_CLIENTES = 60;
+const N_MESES = 12;
+const SEED = 12345;
+
+/** Generador pseudoaleatorio con semilla fija (congruencial lineal). */
+function crearGeneradorAleatorio(semilla) {
+  let s = semilla % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function () {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+const azar = crearGeneradorAleatorio(SEED);
+
+/** Elige una opción de `opciones` respetando los pesos relativos en `pesos`. */
+function elegirConPeso(opciones, pesos) {
+  const total = pesos.reduce((a, b) => a + b, 0);
+  let r = azar() * total;
+  for (let i = 0; i < opciones.length; i++) {
+    r -= pesos[i];
+    if (r <= 0) return opciones[i];
+  }
+  return opciones[opciones.length - 1];
+}
+
+/** Muestra un entero de una distribución Poisson(lambda) (algoritmo de Knuth). */
+function muestraPoisson(lambda) {
+  const L = Math.exp(-lambda);
+  let k = 0;
+  let p = 1;
+  do {
+    k++;
+    p *= azar();
+  } while (p > L);
+  return k - 1;
+}
+
+const SECTORES = ["Textiles", "Transporte", "Construcción", "Logística", "Manufactura", "Alimentos", "Comercio", "Servicios"];
+const SUFIJOS = ["S.A.S.", "del Valle", "Andina", "Nacional", "Ltda.", "Group", "de Colombia"];
+
+/** Genera el catálogo de clientes con su clase de riesgo (1 a 5, ponderada
+ * para que las clases intermedias sean más comunes que los extremos). */
+function generarClientes(n) {
+  const clientes = [];
+  for (let i = 1; i <= n; i++) {
+    const claseRiesgo = elegirConPeso([1, 2, 3, 4, 5], [15, 30, 30, 15, 10]);
+    const sector = SECTORES[Math.floor(azar() * SECTORES.length)];
+    const sufijo = SUFIJOS[Math.floor(azar() * SUFIJOS.length)];
+    clientes.push({
+      id_cliente: i,
+      nombre: `${sector} ${sufijo} ${i}`,
+      clase_riesgo: claseRiesgo,
+      trabajadores_base: Math.floor(azar() * 390) + 10,
+    });
+  }
+  return clientes;
+}
+
+/** Genera los últimos `n` meses calendario, terminando en el mes cerrado
+ * más reciente (el mes actual, en curso, no se incluye). */
+function generarMeses(n) {
+  const meses = [];
+  const hoy = new Date();
+  const inicio = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+  for (let i = n - 1; i >= 0; i--) {
+    const f = new Date(inicio.getFullYear(), inicio.getMonth() - i, 1);
+    meses.push({
+      fecha: f,
+      key: `${f.getFullYear()}-${f.getMonth()}`,
+      label: f.toLocaleDateString("es-CO", { month: "short", year: "2-digit" }),
+    });
+  }
+  return meses;
+}
+
+/** Genera casos y registros de facturación mes a mes para cada cliente.
+ * La frecuencia de casos y la probabilidad de que sean graves aumentan
+ * con la clase de riesgo del cliente, simulando el patrón esperado del
+ * negocio (clientes de mayor riesgo generan más incidentes y más severos). */
+function generarCasosYFacturacion(clientes, meses) {
+  const casos = [];
+  const facturacion = [];
+  let idCaso = 1;
+
+  for (const cliente of clientes) {
+    for (const mes of meses) {
+      const jitter = 0.9 + azar() * 0.2;
+      const trabajadoresActivos = Math.max(1, Math.round(cliente.trabajadores_base * jitter));
+      facturacion.push({ id_cliente: cliente.id_cliente, periodo: mes.key, trabajadores_activos: trabajadoresActivos });
+
+      const lambda = 0.8 + cliente.clase_riesgo * 1.6;
+      const nCasos = muestraPoisson(lambda);
+      for (let c = 0; c < nCasos; c++) {
+        const probGrave = 0.08 + cliente.clase_riesgo * 0.05;
+        const esGrave = azar() < probGrave;
+        const diasAusencia = esGrave ? Math.floor(azar() * 30) + 16 : Math.floor(azar() * 10) + 1;
+        const costoPorDia = 90000 + azar() * 60000;
+        casos.push({
+          id_caso: idCaso++,
+          id_cliente: cliente.id_cliente,
+          periodo: mes.key,
+          tipo: esGrave ? "grave" : "leve",
+          dias_ausencia: diasAusencia,
+          costo: Math.round(diasAusencia * costoPorDia),
+        });
+      }
+    }
+  }
+  return { casos, facturacion };
+}
+
+// Dataset generado una sola vez al cargar la página
+const CLIENTES = generarClientes(N_CLIENTES);
+const MESES = generarMeses(N_MESES);
+const { casos: CASOS, facturacion: FACTURACION } = generarCasosYFacturacion(CLIENTES, MESES);
+
+
+/* ==========================================================================
+   ESTADO DEL FILTRO
+   ========================================================================== */
+
+const clasesActivas = new Set([1, 2, 3, 4, 5]);
+
+/** Devuelve el subconjunto de clientes cuya clase de riesgo está activa
+ * en el filtro actual. */
+function clientesFiltrados() {
+  return CLIENTES.filter((c) => clasesActivas.has(c.clase_riesgo));
+}
+
+/** Devuelve los casos cuyo cliente pertenece al subconjunto filtrado. */
+function casosFiltrados() {
+  const idsActivos = new Set(clientesFiltrados().map((c) => c.id_cliente));
+  return CASOS.filter((c) => idsActivos.has(c.id_cliente));
+}
+
+/** Devuelve los registros de facturación cuyo cliente pertenece al
+ * subconjunto filtrado. */
+function facturacionFiltrada() {
+  const idsActivos = new Set(clientesFiltrados().map((c) => c.id_cliente));
+  return FACTURACION.filter((f) => idsActivos.has(f.id_cliente));
+}
+
+
+/* ==========================================================================
+   AGREGACIONES
+   ========================================================================== */
+
+/** Calcula, para cada mes, el total de casos, costo total, trabajadores
+ * activos totales y tasa de incidencia, sobre los datos ya filtrados. */
+function calcularSerieMensual(casosF, facturacionF) {
+  return MESES.map((mes) => {
+    const casosDelMes = casosF.filter((c) => c.periodo === mes.key);
+    const trabajadoresDelMes = facturacionF
+      .filter((f) => f.periodo === mes.key)
+      .reduce((suma, f) => suma + f.trabajadores_activos, 0);
+    const costoDelMes = casosDelMes.reduce((suma, c) => suma + c.costo, 0);
+    const tasa = trabajadoresDelMes > 0 ? (casosDelMes.length / trabajadoresDelMes) * 100 : 0;
+    return {
+      key: mes.key,
+      label: mes.label,
+      casos: casosDelMes.length,
+      costo: costoDelMes,
+      trabajadores: trabajadoresDelMes,
+      tasa: tasa,
+    };
+  });
+}
+
+/** A partir de la serie mensual, arma los 3 KPIs de portada con su
+ * variación respecto al mes inmediatamente anterior. */
+function calcularKPIs(serieMensual) {
+  const actual = serieMensual[serieMensual.length - 1];
+  const anterior = serieMensual[serieMensual.length - 2];
+
+  function variacionPct(valorActual, valorAnterior) {
+    if (!valorAnterior) return null;
+    return ((valorActual - valorAnterior) / valorAnterior) * 100;
+  }
+
+  return {
+    casos: { valor: actual.casos, deltaPct: variacionPct(actual.casos, anterior.casos) },
+    costo: { valor: actual.costo, deltaPct: variacionPct(actual.costo, anterior.costo) },
+    tasa: { valor: actual.tasa, deltaPct: variacionPct(actual.tasa, anterior.tasa) },
+  };
+}
+
+
+/* ==========================================================================
+   FORMATO
+   ========================================================================== */
+
+function formatoCOP(valor) {
+  if (valor >= 1_000_000_000) return `$${(valor / 1_000_000_000).toFixed(2)} mil M`;
+  if (valor >= 1_000_000) return `$${(valor / 1_000_000).toFixed(1)}M`;
+  if (valor >= 1_000) return `$${(valor / 1_000).toFixed(0)}K`;
+  return `$${valor.toFixed(0)}`;
+}
+
+/** Construye el bloque visual de variación (texto + color). Para estos 3
+ * KPIs, un aumento siempre es una mala señal (más casos, más costo, más
+ * incidencia), así que el color sigue esa semántica y no un genérico
+ * "verde = sube". */
+function renderDelta(elemento, deltaPct, sufijoRef) {
+  elemento.innerHTML = "";
+  if (deltaPct === null || !isFinite(deltaPct)) {
+    elemento.className = "kpi-delta neutro";
+    elemento.textContent = "Sin dato del mes anterior";
+    return;
+  }
+  const subio = deltaPct > 0.05;
+  const bajo = deltaPct < -0.05;
+  elemento.className = "kpi-delta " + (subio ? "subio-mal" : bajo ? "bajo-bien" : "neutro");
+  const flecha = subio ? "▲" : bajo ? "▼" : "→";
+  elemento.innerHTML = `${flecha} ${Math.abs(deltaPct).toFixed(1)}% <span class="kpi-ref">${sufijoRef}</span>`;
+}
+
+
+/* ==========================================================================
+   RENDER: KPIs
+   ========================================================================== */
+
+function renderKPIs(kpis) {
+  document.getElementById("kpi-casos-valor").textContent = kpis.casos.valor.toLocaleString("es-CO");
+  renderDelta(document.getElementById("kpi-casos-delta"), kpis.casos.deltaPct, "vs mes anterior");
+
+  document.getElementById("kpi-costo-valor").textContent = formatoCOP(kpis.costo.valor);
+  renderDelta(document.getElementById("kpi-costo-delta"), kpis.costo.deltaPct, "vs mes anterior");
+
+  document.getElementById("kpi-tasa-valor").textContent = kpis.tasa.valor.toFixed(2);
+  renderDelta(document.getElementById("kpi-tasa-delta"), kpis.tasa.deltaPct, "vs mes anterior");
+}
+
+
+/* ==========================================================================
+   RENDER: gráficos (Chart.js)
+   ========================================================================== */
+
+let chartTendencia, chartTipo, chartClase;
+
+function renderTendencia(serieMensual) {
+  const labels = serieMensual.map((m) => m.label);
+  const valores = serieMensual.map((m) => m.casos);
+  const promedio = valores.reduce((a, b) => a + b, 0) / (valores.length || 1);
+
+  const datos = {
+    labels,
+    datasets: [
+      {
+        label: "Casos por mes",
+        data: valores,
+        borderColor: "#0F6B5C",
+        backgroundColor: "rgba(15,107,92,0.08)",
+        fill: true,
+        tension: 0.25,
+        pointRadius: 3,
+        pointBackgroundColor: "#0F6B5C",
+      },
+      {
+        label: "Promedio histórico",
+        data: labels.map(() => promedio),
+        borderColor: "#A9B2C3",
+        borderDash: [6, 4],
+        pointRadius: 0,
+        fill: false,
+      },
+    ],
+  };
+
+  const opciones = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: "#EEF0F4" } },
+      x: { grid: { display: false } },
+    },
+  };
+
+  if (chartTendencia) {
+    chartTendencia.data = datos;
+    chartTendencia.update();
+  } else {
+    chartTendencia = new Chart(document.getElementById("chart-tendencia"), { type: "line", data: datos, options: opciones });
+  }
+}
+
+function renderDistribucionTipo(casosF) {
+  const leves = casosF.filter((c) => c.tipo === "leve").length;
+  const graves = casosF.filter((c) => c.tipo === "grave").length;
+
+  const datos = {
+    labels: ["Leve", "Grave"],
+    datasets: [{ data: [leves, graves], backgroundColor: ["#0F6B5C", "#C14A4A"], borderWidth: 0 }],
+  };
+  const opciones = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } }, title: { display: true, text: "Por tipo", font: { size: 12 } } },
+  };
+
+  if (chartTipo) {
+    chartTipo.data = datos;
+    chartTipo.update();
+  } else {
+    chartTipo = new Chart(document.getElementById("chart-tipo"), { type: "doughnut", data: datos, options: opciones });
+  }
+}
+
+function renderDistribucionClase(casosF) {
+  const conteoPorClase = [1, 2, 3, 4, 5].map((clase) => {
+    const idsClase = new Set(CLIENTES.filter((c) => c.clase_riesgo === clase).map((c) => c.id_cliente));
+    return casosF.filter((c) => idsClase.has(c.id_cliente)).length;
+  });
+
+  const datos = {
+    labels: ["Clase 1", "Clase 2", "Clase 3", "Clase 4", "Clase 5"],
+    datasets: [{
+      data: conteoPorClase,
+      backgroundColor: [1, 2, 3, 4, 5].map((c) => (clasesActivas.has(c) ? "#0F6B5C" : "#D8DCE5")),
+      borderRadius: 4,
+    }],
+  };
+  const opciones = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false }, title: { display: true, text: "Por clase de riesgo", font: { size: 12 } } },
+    scales: { y: { beginAtZero: true, grid: { color: "#EEF0F4" } }, x: { grid: { display: false } } },
+  };
+
+  if (chartClase) {
+    chartClase.data = datos;
+    chartClase.update();
+  } else {
+    chartClase = new Chart(document.getElementById("chart-clase"), { type: "bar", data: datos, options: opciones });
+  }
+}
+
+
+/* ==========================================================================
+   RENDER: tabla de clientes
+   ========================================================================== */
+
+function renderTablaTopClientes(casosF, clientesF) {
+  const resumen = clientesF.map((cliente) => {
+    const casosCliente = casosF.filter((c) => c.id_cliente === cliente.id_cliente);
+    return {
+      nombre: cliente.nombre,
+      clase: cliente.clase_riesgo,
+      total: casosCliente.length,
+      graves: casosCliente.filter((c) => c.tipo === "grave").length,
+    };
+  });
+
+  resumen.sort((a, b) => b.total - a.total);
+  const top10 = resumen.slice(0, 10);
+
+  const cuerpo = document.getElementById("tabla-top-clientes");
+  cuerpo.innerHTML = "";
+
+  if (top10.length === 0) {
+    cuerpo.innerHTML = `<tr><td colspan="4" class="vacio">No hay clientes para el filtro seleccionado</td></tr>`;
+    return;
+  }
+
+  for (const fila of top10) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${fila.nombre}</td>
+      <td><span class="badge-clase clase-${fila.clase}">${fila.clase}</span></td>
+      <td class="num">${fila.total}</td>
+      <td class="num">${fila.graves}</td>
+    `;
+    cuerpo.appendChild(tr);
+  }
+}
+
+
+/* ==========================================================================
+   FILTRO: UI y orquestación
+   ========================================================================== */
+
+function renderPillsFiltro() {
+  const contenedor = document.getElementById("pills-clase");
+  contenedor.innerHTML = "";
+  [1, 2, 3, 4, 5].forEach((clase) => {
+    const btn = document.createElement("button");
+    btn.className = "pill" + (clasesActivas.has(clase) ? " activo" : "");
+    btn.textContent = `Clase ${clase}`;
+    btn.addEventListener("click", () => {
+      if (clasesActivas.has(clase)) {
+        if (clasesActivas.size > 1) clasesActivas.delete(clase); // nunca dejar el filtro vacío
+      } else {
+        clasesActivas.add(clase);
+      }
+      renderPillsFiltro();
+      renderTodo();
+    });
+    contenedor.appendChild(btn);
+  });
+}
+
+document.getElementById("btn-reset").addEventListener("click", () => {
+  [1, 2, 3, 4, 5].forEach((c) => clasesActivas.add(c));
+  renderPillsFiltro();
+  renderTodo();
+});
+
+/** Recalcula y vuelve a dibujar todas las visualizaciones del tablero a
+ * partir del estado actual del filtro. Es la única función que debe
+ * llamarse tras cualquier cambio de filtro. */
+function renderTodo() {
+  const casosF = casosFiltrados();
+  const facturacionF = facturacionFiltrada();
+  const clientesF = clientesFiltrados();
+
+  const serieMensual = calcularSerieMensual(casosF, facturacionF);
+  const kpis = calcularKPIs(serieMensual);
+
+  renderKPIs(kpis);
+  renderTendencia(serieMensual);
+  renderTablaTopClientes(casosF, clientesF);
+  renderDistribucionTipo(casosF);
+  renderDistribucionClase(casosF);
+}
+
+
+/* ==========================================================================
+   INICIALIZACIÓN
+   ========================================================================== */
+
+function init() {
+  document.getElementById("corte-label").textContent =
+    MESES[MESES.length - 1].fecha.toLocaleDateString("es-CO", { month: "long", year: "numeric" });
+  renderPillsFiltro();
+  renderTodo();
+}
+
+init();
+</script>
+</body>
+</html>
